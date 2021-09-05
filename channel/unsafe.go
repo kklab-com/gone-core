@@ -226,7 +226,7 @@ func (u *DefaultUnsafe) futureCancel(future Future) {
 }
 
 func (u *DefaultUnsafe) futureSuccess(future Future) {
-	future.Completable().Complete(nil)
+	future.Completable().Complete(u.channel)
 }
 
 type unsafeExecuteElem struct {
