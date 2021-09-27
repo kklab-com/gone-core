@@ -9,6 +9,11 @@ import (
 	"github.com/kklab-com/goth-kkutil/concurrent"
 )
 
+var ErrLocalAddrIsEmpty = fmt.Errorf("local addr is empty")
+var ErrRemoteAddrIsEmpty = fmt.Errorf("remote addr is empty")
+var ErrChannelNotActive = fmt.Errorf("channel not active")
+var ErrChannelClosed = fmt.Errorf("channel closed")
+
 type Unsafe interface {
 	Read()
 	Write(obj interface{}, future Future)
@@ -75,7 +80,7 @@ func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
 		if obj == nil {
 			u.futureSuccess(future)
 		} else if !u.channel.IsActive() {
-			u.futureCancel(future)
+			u.futureFail(future, ErrChannelNotActive)
 			return
 		}
 	}
@@ -98,7 +103,7 @@ func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
 
 				if err := uw.UnsafeWrite(elem.obj); err != nil {
 					u.channel.inactiveChannel()
-					u.futureCancel(elem.future)
+					u.futureFail(elem.future, err)
 				} else {
 					u.futureSuccess(elem.future)
 				}
@@ -109,7 +114,11 @@ func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
 			if !u.channel.IsActive() {
 				for v := u.writeBuffer.Pop(); v != nil; v = u.writeBuffer.Pop() {
 					elem := v.(*unsafeExecuteElem)
-					u.futureCancel(elem.future)
+					if u.channel.CloseFuture().IsDone() {
+						u.futureFail(elem.future, ErrChannelClosed)
+					} else {
+						u.futureFail(elem.future, ErrChannelNotActive)
+					}
 				}
 			}
 
@@ -123,7 +132,7 @@ func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
 
 func (u *DefaultUnsafe) Bind(localAddr net.Addr, future Future) {
 	if localAddr == nil {
-		u.futureCancel(future)
+		u.futureFail(future, ErrLocalAddrIsEmpty)
 		return
 	}
 
@@ -133,7 +142,7 @@ func (u *DefaultUnsafe) Bind(localAddr net.Addr, future Future) {
 			if err := channel.UnsafeBind(elem.localAddr); err != nil {
 				kklogger.WarnJ("DefaultUnsafe.Bind", fmt.Sprintf("channel_id: %s, error: %s", u.channel.ID(), err.Error()))
 				u.channel.inactiveChannel()
-				u.futureCancel(elem.future)
+				u.futureFail(elem.future, err)
 			} else {
 				u.channel.activeChannel()
 				if channel, ok := u.channel.(UnsafeAccept); ok {
@@ -178,7 +187,7 @@ func (u *DefaultUnsafe) Close(future Future) {
 
 func (u *DefaultUnsafe) Connect(localAddr net.Addr, remoteAddr net.Addr, future Future) {
 	if remoteAddr == nil {
-		u.futureCancel(future)
+		u.futureFail(future, ErrRemoteAddrIsEmpty)
 		return
 	}
 
@@ -221,12 +230,16 @@ func (u *DefaultUnsafe) resetState(state *int32) {
 	atomic.StoreInt32(state, 0)
 }
 
-func (u *DefaultUnsafe) futureCancel(future Future) {
-	future.Completable().Cancel()
-}
-
 func (u *DefaultUnsafe) futureSuccess(future Future) {
 	future.Completable().Complete(u.channel)
+}
+
+func (u *DefaultUnsafe) futureFail(future Future, err error) {
+	future.Completable().Fail(err)
+}
+
+func (u *DefaultUnsafe) futureCancel(future Future) {
+	future.Completable().Cancel()
 }
 
 type unsafeExecuteElem struct {
