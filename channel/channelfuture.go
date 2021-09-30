@@ -32,7 +32,7 @@ func (d *DefaultFuture) Sync() Future {
 }
 
 func (d *DefaultFuture) Completable() concurrent.CompletableFuture {
-	return d.Future.(concurrent.CompletableFuture)
+	return d.Future.Completable()
 }
 
 func (d *DefaultFuture) Channel() Channel {
