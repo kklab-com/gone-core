@@ -26,10 +26,6 @@ func NewFuture(channel Channel) Future {
 	return future
 }
 
-func (d *DefaultFuture) AddListener(listener concurrent.FutureListener) concurrent.Future {
-	return d.Future.AddListener(listener)
-}
-
 func (d *DefaultFuture) Sync() Future {
 	d.Future.Await()
 	return d

@@ -8,8 +8,8 @@ github.com/kklab-com/goth-base62 v1.0.0 h1:tFIhY1a34asPh41GWfWafUd1DBrzHViOOM6RW
 github.com/kklab-com/goth-base62 v1.0.0/go.mod h1:zVOUVB/1H/vmOnZHOovnOXaJ9hpRTgSx0Sv63v0xaDI=
 github.com/kklab-com/goth-kklogger v1.0.0 h1:zXFPDI10NXm2uFsrcA8PAJercErWOt/646aiAYF7gWY=
 github.com/kklab-com/goth-kklogger v1.0.0/go.mod h1:nbgBjFc1QaE5eQi76hyGNGEhwr+HRjAzRB4zzg7NAmw=
-github.com/kklab-com/goth-kkutil v1.0.6 h1:1VCam8pJpWO/fqcoh4TRqZMsbL+bmzjiEz6x/+CBYFw=
-github.com/kklab-com/goth-kkutil v1.0.6/go.mod h1:eEWfCIlXa/Fz/55CCl4XiuL1yG3mstVmmIuTHvn4UAI=
+github.com/kklab-com/goth-kkutil v1.0.7 h1://D6sFCihYhJ9UDv1z6RiYoA98ZmqHI1cU+OZ0esrbw=
+github.com/kklab-com/goth-kkutil v1.0.7/go.mod h1:eEWfCIlXa/Fz/55CCl4XiuL1yG3mstVmmIuTHvn4UAI=
 github.com/kklab-com/goth-panic v1.0.1 h1:7btuOML+0KbS5j8Ixkk+6E9Hr5YYwy0wAxDM/ucqG/c=
 github.com/kklab-com/goth-panic v1.0.1/go.mod h1:FdgZSwGtF4kEqRO6OgDbzMgnrNKm8fMB6Fn/eORkaAU=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
