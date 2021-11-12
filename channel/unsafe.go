@@ -4,15 +4,19 @@ import (
 	"fmt"
 	"net"
 	"sync/atomic"
+	"time"
 
 	"github.com/kklab-com/goth-kklogger"
 	"github.com/kklab-com/goth-kkutil/concurrent"
 )
 
+const DefaultAcceptTimeout = 5000
+
 var ErrLocalAddrIsEmpty = fmt.Errorf("local addr is empty")
 var ErrRemoteAddrIsEmpty = fmt.Errorf("remote addr is empty")
 var ErrChannelNotActive = fmt.Errorf("channel not active")
 var ErrChannelClosed = fmt.Errorf("channel closed")
+var ErrAcceptTimeout = fmt.Errorf("accept timeout")
 
 type Unsafe interface {
 	Read()
@@ -155,9 +159,19 @@ func (u *DefaultUnsafe) Bind(localAddr net.Addr, future Future) {
 
 								u.futureCancel(future)
 							} else {
-								child.Pipeline().fireRegistered()
-								child.activeChannel()
-								u.futureSuccess(future)
+								go func(u *DefaultUnsafe, child Channel, future Future) {
+									child.Pipeline().fireRegistered()
+									child.activeChannel()
+									u.futureSuccess(future)
+								}(u, child, future)
+
+								go func(u *DefaultUnsafe, child Channel, future Future) {
+									<-time.After(time.Duration(GetParamIntDefault(child, ParamAcceptTimeout, DefaultAcceptTimeout)) * time.Millisecond)
+									u.futureFail(future, ErrAcceptTimeout)
+									if future.IsError() {
+										kklogger.ErrorJ("DefaultUnsafe.UnsafeAccept", future.Error().Error())
+									}
+								}(u, child, future)
 							}
 						}
 					}()

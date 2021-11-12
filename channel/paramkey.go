@@ -6,6 +6,7 @@ import (
 
 type ParamKey string
 
+const ParamAcceptTimeout = ParamKey("accept_timeout")
 const ParamReadBufferSize = ParamKey("read_buffer_size")
 const ParamReadTimeout = ParamKey("read_timeout")
 const ParamWriteTimeout = ParamKey("write_timeout")
