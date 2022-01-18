@@ -7,7 +7,6 @@ import (
 type Future interface {
 	concurrent.Future
 	Sync() Future
-	Completable() concurrent.CompletableFuture
 	Channel() Channel
 	_channel() Channel
 }
@@ -19,7 +18,7 @@ type DefaultFuture struct {
 
 func NewFuture(channel Channel) Future {
 	future := &DefaultFuture{
-		Future:  concurrent.NewFuture(nil),
+		Future:  concurrent.NewFuture(),
 		channel: channel,
 	}
 
@@ -31,8 +30,8 @@ func (d *DefaultFuture) Sync() Future {
 	return d
 }
 
-func (d *DefaultFuture) Completable() concurrent.CompletableFuture {
-	return d.Future.Completable()
+func (d *DefaultFuture) Set(obj interface{}) {
+	d.Future.(concurrent.Settable).Set(obj)
 }
 
 func (d *DefaultFuture) Channel() Channel {

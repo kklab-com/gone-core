@@ -1,10 +1,9 @@
 package channel
 
 import (
-	"context"
 	"fmt"
 	"net"
-	"sync"
+	"sync/atomic"
 
 	"github.com/google/uuid"
 	"github.com/kklab-com/goth-base62"
@@ -13,6 +12,7 @@ import (
 )
 
 type Channel interface {
+	Serial() uint64
 	ID() string
 	Init() Channel
 	Pipeline() Pipeline
@@ -32,18 +32,14 @@ type Channel interface {
 	Params() *Params
 	Parent() ServerChannel
 	LocalAddr() net.Addr
-	context() context.Context
+	init(channel Channel)
 	unsafe() Unsafe
-	op() *sync.Mutex
 	setLocalAddr(addr net.Addr)
 	activeChannel()
-	inactiveChannel() Future
-	closeWaitGroup() *concurrent.BurstWaitGroup
+	inactiveChannel() (success bool, future concurrent.Future)
 	setPipeline(pipeline Pipeline)
 	setUnsafe(unsafe Unsafe)
 	setParent(channel ServerChannel)
-	setContext(ctx context.Context)
-	setContextCancelFunc(cancel context.CancelFunc)
 	setCloseFuture(future Future)
 	release()
 }
@@ -84,33 +80,26 @@ var ErrReadError = fmt.Errorf("read error")
 var ErrSkip = fmt.Errorf("skip")
 
 var IDEncoder = base62.FlipEncoding
+var serialSequence = uint64(0)
 
 type DefaultChannel struct {
-	id            string
-	Name          string
-	opLock        sync.Mutex
-	ctx           context.Context
-	ctxCancelFunc context.CancelFunc
-	params        Params
-	localAddr     net.Addr
-	active        bool
-	pipeline      Pipeline
-	_unsafe       Unsafe
-	parent        ServerChannel
-	closeFuture   Future
-	closeWG       concurrent.BurstWaitGroup
+	id          string
+	serial      uint64
+	Name        string
+	alive       concurrent.Future
+	params      Params
+	localAddr   net.Addr
+	pipeline    Pipeline
+	_unsafe     Unsafe
+	parent      ServerChannel
+	closeFuture Future
+}
+
+func (c *DefaultChannel) Serial() uint64 {
+	return c.serial
 }
 
 func (c *DefaultChannel) ID() string {
-	if c.id == "" {
-		c.opLock.Lock()
-		defer c.opLock.Unlock()
-		if c.id == "" {
-			u := uuid.New()
-			c.id = IDEncoder.EncodeToString(u[:])
-		}
-	}
-
 	return c.id
 }
 
@@ -166,7 +155,7 @@ func (c *DefaultChannel) Write(obj interface{}) Future {
 }
 
 func (c *DefaultChannel) IsActive() bool {
-	return c.active
+	return c.alive != nil && !c.alive.IsDone()
 }
 
 func (c *DefaultChannel) SetParam(key ParamKey, value interface{}) {
@@ -193,16 +182,16 @@ func (c *DefaultChannel) LocalAddr() net.Addr {
 	return c.localAddr
 }
 
-func (c *DefaultChannel) context() context.Context {
-	return c.ctx
+func (c *DefaultChannel) init(channel Channel) {
+	u := uuid.New()
+	c.id = IDEncoder.EncodeToString(u[:])
+	c.serial = atomic.AddUint64(&serialSequence, 1)
+	c.setPipeline(_NewDefaultPipeline(channel))
+	c.setCloseFuture(c.Pipeline().NewFuture())
 }
 
 func (c *DefaultChannel) unsafe() Unsafe {
 	return c._unsafe
-}
-
-func (c *DefaultChannel) op() *sync.Mutex {
-	return &c.opLock
 }
 
 func (c *DefaultChannel) setLocalAddr(addr net.Addr) {
@@ -210,41 +199,34 @@ func (c *DefaultChannel) setLocalAddr(addr net.Addr) {
 }
 
 func (c *DefaultChannel) activeChannel() {
-	c.active = true
+	c.alive = concurrent.NewFuture()
 	c.Pipeline().fireActive()
 	c.Read()
-	go func(c Channel) {
-		<-c.context().Done()
-		if c.IsActive() {
-			if _, ok := c.Pipeline().Channel().(ServerChannel); !ok {
-				c.Disconnect()
-			}
-		}
-	}(c)
 }
 
-func (c *DefaultChannel) inactiveChannel() Future {
-	doInactive := c.IsActive()
-	c.active = false
-	c.ctxCancelFunc()
-	future := c.Pipeline().NewFuture()
-	go func(c *DefaultChannel) {
-		c.closeWG.Wait()
-		if doInactive {
-			c.Pipeline().fireInactive()
-			c.Pipeline().fireUnregistered()
-			future.Completable().Complete(nil)
-			if _, ok := c.Pipeline().Channel().(ServerChannel); !ok {
-				c.CloseFuture().Completable().Complete(nil)
+func (c *DefaultChannel) inactiveChannel() (success bool, future concurrent.Future) {
+	if c.alive.Completable().Complete(c) {
+		cu := c
+		rf := c.alive.Then(func(parent concurrent.Future) interface{} {
+			// if server channel, wait all child channels be closed.
+			if sch, ok := cu.Pipeline().Channel().(ServerChannel); ok {
+				sch.waitChildren()
 			}
-		}
-	}(c)
 
-	return future
-}
+			cu.Pipeline().fireInactive()
+			cu.Pipeline().fireUnregistered()
+			if _, ok := cu.Pipeline().Channel().(ServerChannel); !ok {
+				cu.CloseFuture().Completable().Complete(cu)
+			}
 
-func (c *DefaultChannel) closeWaitGroup() *concurrent.BurstWaitGroup {
-	return &c.closeWG
+			cu.release()
+			return cu
+		})
+
+		return true, rf
+	}
+
+	return false, concurrent.NewCompletedFuture(c)
 }
 
 func (c *DefaultChannel) setPipeline(pipeline Pipeline) {
@@ -259,21 +241,13 @@ func (c *DefaultChannel) setParent(channel ServerChannel) {
 	c.parent = channel
 }
 
-func (c *DefaultChannel) setContext(ctx context.Context) {
-	c.ctx = ctx
-}
-
-func (c *DefaultChannel) setContextCancelFunc(cancel context.CancelFunc) {
-	c.ctxCancelFunc = cancel
-}
-
 func (c *DefaultChannel) setCloseFuture(future Future) {
 	c.closeFuture = future
 }
 
 func (c *DefaultChannel) release() {
 	if c.Parent() != nil {
-		c.Parent().closeWaitGroup().Done()
+		c.Parent().releaseChild(c)
 	}
 }
 

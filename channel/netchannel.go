@@ -10,6 +10,7 @@ import (
 
 	"github.com/kklab-com/goth-kklogger"
 	"github.com/kklab-com/goth-kkutil/buf"
+	"github.com/kklab-com/goth-kkutil/concurrent"
 	errors2 "github.com/pkg/errors"
 )
 
@@ -68,10 +69,6 @@ func (c *DefaultNetChannel) setConn(conn net.Conn) {
 	c.conn = WrapConn(conn)
 }
 
-func (c *DefaultNetChannel) IsActive() bool {
-	return c.active
-}
-
 func (c *DefaultNetChannel) SetConn(conn net.Conn) {
 	c.setConn(conn)
 }
@@ -97,7 +94,9 @@ func (c *DefaultNetChannel) UnsafeWrite(obj interface{}) error {
 	}
 
 	if c.WriteTimeout > 0 {
-		c.Conn().SetWriteDeadline(time.Now().Add(c.WriteTimeout))
+		if err := c.Conn().SetWriteDeadline(time.Now().Add(c.WriteTimeout)); err != nil {
+			return err
+		}
 	}
 
 	if _, err := c.Conn().Write(bs); err != nil {
@@ -119,37 +118,30 @@ func (c *DefaultNetChannel) UnsafeRead() (interface{}, error) {
 
 	bs := make([]byte, c.BufferSize)
 	if c.ReadTimeout > 0 {
-		c.Conn().SetReadDeadline(time.Now().Add(c.ReadTimeout))
+		if err := c.Conn().SetReadDeadline(time.Now().Add(c.ReadTimeout)); err != nil {
+			return nil, err
+		}
 	}
 
-	rc, err := c.Conn().Read(bs)
-	if err != nil {
+	if rc, err := c.Conn().Read(bs); err != nil {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			if c.Conn().IsActive() {
 				return nil, ErrSkip
 			} else {
-				c.Deregister()
 				return nil, ErrNotActive
 			}
 		}
 
-		if c.IsActive() {
-			if err != io.EOF {
-				kklogger.TraceJ("DefaultNetChannel.UnsafeRead", err.Error())
-			}
-
-			if !c.Conn().IsActive() {
-				c.Deregister()
-				return nil, err
-			}
-		} else if err == io.EOF {
-			return nil, err
+		if c.IsActive() && err != io.EOF {
+			kklogger.TraceJ("DefaultNetChannel.UnsafeRead", err.Error())
 		}
+
+		return nil, err
 	} else if rc == 0 {
 		return nil, ErrSkip
+	} else {
+		return buf.NewByteBuf(bs[:rc]), nil
 	}
-
-	return buf.NewByteBuf(bs[:rc]), nil
 }
 
 func (c *DefaultNetChannel) UnsafeDisconnect() error {
@@ -176,4 +168,13 @@ func (c *DefaultNetChannel) UnsafeConnect(localAddr net.Addr, remoteAddr net.Add
 	}
 
 	return nil
+}
+
+func (c *DefaultNetChannel) inactiveChannel() (bool, concurrent.Future) {
+	success, future := c.DefaultChannel.inactiveChannel()
+	if success {
+		c.UnsafeDisconnect()
+	}
+
+	return success, future
 }

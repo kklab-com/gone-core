@@ -43,33 +43,33 @@ func NewUnsafe(channel Channel) Unsafe {
 }
 
 func (u *DefaultUnsafe) Read() {
-	if channel, ok := u.channel.(UnsafeRead); ok && u.markState(&u.readS) && u.channel.IsActive() {
-		go func(u *DefaultUnsafe) {
+	if uf, ok := u.channel.(UnsafeRead); ok && u.markState(&u.readS) && u.channel.IsActive() {
+		go func(u *DefaultUnsafe, uf UnsafeRead) {
 			defer u.resetState(&u.readS)
 			lastObjRead := false
 			for {
-				obj, err := channel.UnsafeRead()
-				if err != nil && err != ErrSkip {
-					break
-				}
-
-				if err == ErrSkip {
-					if u.channel.IsActive() && lastObjRead {
-						lastObjRead = false
-						u.channel.FireReadCompleted()
+				if obj, err := uf.UnsafeRead(); err != nil {
+					if err == ErrSkip {
+						if u.channel.IsActive() && lastObjRead {
+							lastObjRead = false
+							u.channel.FireReadCompleted()
+						}
+					} else {
+						u.channel.inactiveChannel()
+						break
+					}
+				} else {
+					if obj != nil {
+						u.channel.FireRead(obj)
+						lastObjRead = true
 					}
 				}
 
-				if obj != nil {
-					u.channel.FireRead(obj)
-					lastObjRead = true
-				}
-
-				if !channel.UnsafeIsAutoRead() {
+				if !uf.UnsafeIsAutoRead() {
 					break
 				}
 			}
-		}(u)
+		}(u, uf)
 	}
 }
 
@@ -79,7 +79,8 @@ func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
 	}
 
 	if obj != nil && u.channel.IsActive() {
-		u.writeBuffer.Push(&unsafeExecuteElem{obj: obj, future: future})
+		future.(concurrent.Settable).Set(obj)
+		u.writeBuffer.Push(future)
 	} else {
 		if obj == nil {
 			u.futureSuccess(future)
@@ -89,27 +90,27 @@ func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
 		}
 	}
 
-	if channel, ok := u.channel.(UnsafeWrite); ok && u.markState(&u.writeS) {
-		go func(u *DefaultUnsafe, uw UnsafeWrite) {
+	if uf, ok := u.channel.(UnsafeWrite); ok && u.markState(&u.writeS) {
+		go func(u *DefaultUnsafe, uf UnsafeWrite) {
 			for u.channel.IsActive() {
-				elem := func() *unsafeExecuteElem {
+				future := func() Future {
 					if v := u.writeBuffer.Pop(); v != nil {
-						return v.(*unsafeExecuteElem)
+						return v.(Future)
 					}
 
 					return nil
 				}()
 
-				if elem == nil {
+				if future == nil {
 					// pending close
 					break
 				}
 
-				if err := uw.UnsafeWrite(elem.obj); err != nil {
+				if err := uf.UnsafeWrite(future.GetNow()); err != nil {
 					u.channel.inactiveChannel()
-					u.futureFail(elem.future, err)
+					u.futureFail(future, err)
 				} else {
-					u.futureSuccess(elem.future)
+					u.futureSuccess(future)
 				}
 
 				continue
@@ -117,11 +118,11 @@ func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
 
 			if !u.channel.IsActive() {
 				for v := u.writeBuffer.Pop(); v != nil; v = u.writeBuffer.Pop() {
-					elem := v.(*unsafeExecuteElem)
+					future := v.(Future)
 					if u.channel.CloseFuture().IsDone() {
-						u.futureFail(elem.future, ErrChannelClosed)
+						u.futureFail(future, ErrChannelClosed)
 					} else {
-						u.futureFail(elem.future, ErrChannelNotActive)
+						u.futureFail(future, ErrChannelNotActive)
 					}
 				}
 			}
@@ -130,7 +131,7 @@ func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
 			if u.writeBuffer.Len() > 0 {
 				u.Write(nil, nil)
 			}
-		}(u, channel)
+		}(u, uf)
 	}
 }
 
@@ -140,13 +141,13 @@ func (u *DefaultUnsafe) Bind(localAddr net.Addr, future Future) {
 		return
 	}
 
-	if channel, ok := u.channel.(UnsafeBind); ok && u.markState(&u.bindS) && !u.channel.CloseFuture().IsDone() {
-		go func(u *DefaultUnsafe, elem *unsafeExecuteElem) {
+	if _, ok := u.channel.(UnsafeBind); ok && u.markState(&u.bindS) && !u.channel.CloseFuture().IsDone() {
+		go func(u *DefaultUnsafe, localAddr net.Addr, future Future) {
 			defer u.resetState(&u.bindS)
-			if err := channel.UnsafeBind(elem.localAddr); err != nil {
+			if err := u.channel.(UnsafeBind).UnsafeBind(localAddr); err != nil {
 				kklogger.WarnJ("DefaultUnsafe.Bind", fmt.Sprintf("channel_id: %s, error: %s", u.channel.ID(), err.Error()))
 				u.channel.inactiveChannel()
-				u.futureFail(elem.future, err)
+				u.futureFail(future, err)
 			} else {
 				u.channel.activeChannel()
 				if channel, ok := u.channel.(UnsafeAccept); ok {
@@ -167,9 +168,9 @@ func (u *DefaultUnsafe) Bind(localAddr net.Addr, future Future) {
 
 								go func(u *DefaultUnsafe, child Channel, future Future) {
 									<-time.After(time.Duration(GetParamIntDefault(child, ParamAcceptTimeout, DefaultAcceptTimeout)) * time.Millisecond)
-									u.futureFail(future, ErrAcceptTimeout)
-									if future.IsError() {
+									if u.futureFail(future, ErrAcceptTimeout) {
 										kklogger.ErrorJ("DefaultUnsafe.UnsafeAccept", future.Error().Error())
+										child.inactiveChannel()
 									}
 								}(u, child, future)
 							}
@@ -177,25 +178,25 @@ func (u *DefaultUnsafe) Bind(localAddr net.Addr, future Future) {
 					}()
 				}
 
-				u.futureSuccess(elem.future)
+				u.futureSuccess(future)
 			}
-		}(u, &unsafeExecuteElem{localAddr: localAddr, future: future})
+		}(u, localAddr, future)
 	}
 }
 
 func (u *DefaultUnsafe) Close(future Future) {
 	if channel, ok := u.channel.(UnsafeClose); ok && u.markState(&u.closeS) && !u.channel.CloseFuture().IsDone() {
-		go func(u *DefaultUnsafe, elem *unsafeExecuteElem) {
+		go func(u *DefaultUnsafe, future Future) {
 			defer u.resetState(&u.closeS)
-			u.channel.inactiveChannel().Sync()
+			func() concurrent.Future { _, f := u.channel.inactiveChannel(); return f }().Await()
 			err := channel.UnsafeClose()
 			if err != nil {
 				kklogger.WarnJ("DefaultUnsafe.Close", fmt.Sprintf("channel_id: %s, error: %s", u.channel.ID(), err.Error()))
 			}
 
 			u.futureSuccess(u.channel.CloseFuture())
-			u.futureSuccess(elem.future)
-		}(u, &unsafeExecuteElem{future: future})
+			u.futureSuccess(future)
+		}(u, future)
 	}
 }
 
@@ -206,33 +207,32 @@ func (u *DefaultUnsafe) Connect(localAddr net.Addr, remoteAddr net.Addr, future 
 	}
 
 	if channel, ok := u.channel.(UnsafeConnect); ok && u.markState(&u.connectS) && !u.channel.CloseFuture().IsDone() {
-		go func(u *DefaultUnsafe, elem *unsafeExecuteElem) {
+		go func(u *DefaultUnsafe, localAddr net.Addr, remoteAddr net.Addr, future Future) {
 			defer u.resetState(&u.connectS)
-			if err := channel.UnsafeConnect(elem.localAddr, elem.remoteAddr); err != nil {
+			if err := channel.UnsafeConnect(localAddr, remoteAddr); err != nil {
 				kklogger.WarnJ("DefaultUnsafe.Connect", fmt.Sprintf("channel_id: %s, error: %s", u.channel.ID(), err.Error()))
 				u.channel.inactiveChannel()
-				u.futureCancel(elem.future)
+				u.futureCancel(future)
 			} else {
 				u.channel.activeChannel()
-				u.futureSuccess(elem.future)
+				u.futureSuccess(future)
 			}
-		}(u, &unsafeExecuteElem{localAddr: localAddr, remoteAddr: remoteAddr, future: future})
+		}(u, localAddr, remoteAddr, future)
 	}
 }
 
 func (u *DefaultUnsafe) Disconnect(future Future) {
 	if channel, ok := u.channel.(UnsafeDisconnect); ok && u.markState(&u.disconnectS) && !u.channel.CloseFuture().IsDone() {
-		go func(u *DefaultUnsafe, elem *unsafeExecuteElem) {
+		go func(u *DefaultUnsafe, future Future) {
 			defer u.resetState(&u.disconnectS)
 			u.channel.inactiveChannel()
 			err := channel.UnsafeDisconnect()
-			u.channel.release()
 			if err != nil {
 				kklogger.WarnJ("DefaultUnsafe.Disconnect", fmt.Sprintf("channel_id: %s, error: %s", u.channel.ID(), err.Error()))
 			}
 
-			u.futureSuccess(elem.future)
-		}(u, &unsafeExecuteElem{future: future})
+			u.futureSuccess(future)
+		}(u, future)
 	}
 }
 
@@ -244,21 +244,14 @@ func (u *DefaultUnsafe) resetState(state *int32) {
 	atomic.StoreInt32(state, 0)
 }
 
-func (u *DefaultUnsafe) futureSuccess(future Future) {
-	future.Completable().Complete(u.channel)
+func (u *DefaultUnsafe) futureSuccess(future Future) bool {
+	return future.Completable().Complete(u.channel)
 }
 
-func (u *DefaultUnsafe) futureFail(future Future, err error) {
-	future.Completable().Fail(err)
+func (u *DefaultUnsafe) futureFail(future Future, err error) bool {
+	return future.Completable().Fail(err)
 }
 
-func (u *DefaultUnsafe) futureCancel(future Future) {
-	future.Completable().Cancel()
-}
-
-type unsafeExecuteElem struct {
-	obj        interface{}
-	localAddr  net.Addr
-	remoteAddr net.Addr
-	future     Future
+func (u *DefaultUnsafe) futureCancel(future Future) bool {
+	return future.Completable().Cancel()
 }

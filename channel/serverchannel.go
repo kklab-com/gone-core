@@ -1,8 +1,10 @@
 package channel
 
 import (
-	"context"
 	"net"
+	"sync"
+
+	"github.com/kklab-com/goth-kkutil/concurrent"
 )
 
 type ServerChannel interface {
@@ -10,12 +12,32 @@ type ServerChannel interface {
 	setChildHandler(handler Handler) ServerChannel
 	setChildParams(key ParamKey, value interface{})
 	ChildParams() *Params
+	releaseChild(channel Channel)
+	waitChildren()
 }
 
 type DefaultServerChannel struct {
 	DefaultChannel
 	childHandler Handler
 	childParams  Params
+	childMap     sync.Map
+}
+
+func (c *DefaultServerChannel) activeChannel() {
+	scp := c
+	scp.DefaultChannel.activeChannel()
+	scp.DefaultChannel.alive.Then(func(parent concurrent.Future) interface{} {
+		scp.childMap.Range(func(key, value interface{}) bool {
+			if ch, ok := value.(Channel); ok {
+				if ch.IsActive() {
+					ch.inactiveChannel()
+				}
+			}
+			return true
+		})
+
+		return parent.Get()
+	})
 }
 
 func (c *DefaultServerChannel) setChildHandler(handler Handler) ServerChannel {
@@ -27,16 +49,26 @@ func (c *DefaultServerChannel) setChildParams(key ParamKey, value interface{}) {
 	c.childParams.Store(key, value)
 }
 
+func (c *DefaultServerChannel) waitChildren() {
+	c.childMap.Range(func(key, value interface{}) bool {
+		ch := value.(Channel)
+		ch.CloseFuture().Await()
+		return true
+	})
+}
+
 func (c *DefaultServerChannel) ChildParams() *Params {
 	return &c.childParams
 }
 
+func (c *DefaultServerChannel) releaseChild(channel Channel) {
+	c.childMap.Delete(channel.Serial())
+}
+
 func (c *DefaultServerChannel) DeriveChildChannel(child Channel, parent ServerChannel) Channel {
-	child.setPipeline(_NewDefaultPipeline(child))
+	child.init(child)
 	child.setParent(parent)
-	cancel, cancelFunc := context.WithCancel(c.ctx)
-	child.setContext(cancel)
-	child.setContextCancelFunc(cancelFunc)
+	c.childMap.Store(child.Serial(), child)
 	c.ChildParams().Range(func(k ParamKey, v interface{}) bool {
 		child.SetParam(k, v)
 		return true
@@ -47,8 +79,6 @@ func (c *DefaultServerChannel) DeriveChildChannel(child Channel, parent ServerCh
 		child.Pipeline().AddLast("ROOT", c.childHandler)
 	}
 
-	child.setCloseFuture(child.Pipeline().NewFuture())
-	c.closeWG.Add(1)
 	return child
 }
 
@@ -57,7 +87,11 @@ func (c *DefaultServerChannel) UnsafeBind(localAddr net.Addr) error {
 }
 
 func (c *DefaultServerChannel) UnsafeAccept() (Channel, Future) {
-	return nil, c.pipeline.NewFuture()
+	return nil, c.Pipeline().NewFuture()
+}
+
+func (c *DefaultServerChannel) UnsafeRead() (interface{}, error) {
+	return nil, nil
 }
 
 func (c *DefaultServerChannel) UnsafeClose() error {

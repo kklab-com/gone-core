@@ -134,7 +134,6 @@ func (h *tailHandler) Read(ctx HandlerContext, obj interface{}) {
 
 func (h *tailHandler) Deregister(ctx HandlerContext, future Future) {
 	ctx.Channel().inactiveChannel()
-	ctx.Channel().release()
 	future.Completable().Complete(nil)
 }
 

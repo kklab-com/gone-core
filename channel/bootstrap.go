@@ -1,7 +1,6 @@
 package channel
 
 import (
-	"context"
 	"net"
 	"reflect"
 )
@@ -59,10 +58,7 @@ func (d *DefaultBootstrap) Connect(localAddr net.Addr, remoteAddr net.Addr) Futu
 		preInit.BootstrapPreInit()
 	}
 
-	channel.setPipeline(_NewDefaultPipeline(channel))
-	cancel, cancelFunc := context.WithCancel(context.Background())
-	channel.setContext(cancel)
-	channel.setContextCancelFunc(cancelFunc)
+	channel.init(channel)
 	d.Params().Range(func(k ParamKey, v interface{}) bool {
 		channel.SetParam(k, v)
 		return true
@@ -77,7 +73,6 @@ func (d *DefaultBootstrap) Connect(localAddr net.Addr, remoteAddr net.Addr) Futu
 		preInit.BootstrapPostInit()
 	}
 
-	channel.setCloseFuture(channel.Pipeline().NewFuture())
 	channel.Pipeline().fireRegistered()
 	return channel.Connect(localAddr, remoteAddr)
 }

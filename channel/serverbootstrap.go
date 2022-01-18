@@ -1,7 +1,6 @@
 package channel
 
 import (
-	"context"
 	"net"
 	"reflect"
 )
@@ -41,10 +40,7 @@ func (d *DefaultServerBootstrap) Bind(localAddr net.Addr) Future {
 		preInit.BootstrapPreInit()
 	}
 
-	serverChannel.setPipeline(_NewDefaultPipeline(serverChannel))
-	cancel, cancelFunc := context.WithCancel(context.Background())
-	serverChannel.setContext(cancel)
-	serverChannel.setContextCancelFunc(cancelFunc)
+	serverChannel.init(serverChannel)
 	d.Params().Range(func(k ParamKey, v interface{}) bool {
 		serverChannel.SetParam(k, v)
 		return true
@@ -69,7 +65,6 @@ func (d *DefaultServerBootstrap) Bind(localAddr net.Addr) Future {
 		postInit.BootstrapPostInit()
 	}
 
-	serverChannel.setCloseFuture(serverChannel.Pipeline().NewFuture())
 	serverChannel.Pipeline().fireRegistered()
 	return serverChannel.Bind(localAddr)
 }
