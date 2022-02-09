@@ -147,6 +147,7 @@ func (u *DefaultUnsafe) Bind(localAddr net.Addr, future Future) {
 			if err := u.channel.(UnsafeBind).UnsafeBind(localAddr); err != nil {
 				kklogger.WarnJ("DefaultUnsafe.Bind", fmt.Sprintf("channel_id: %s, error: %s", u.channel.ID(), err.Error()))
 				u.channel.inactiveChannel()
+				future.(*DefaultFuture).channel = nil
 				u.futureFail(future, err)
 			} else {
 				u.channel.activeChannel()
@@ -212,7 +213,8 @@ func (u *DefaultUnsafe) Connect(localAddr net.Addr, remoteAddr net.Addr, future 
 			if err := channel.UnsafeConnect(localAddr, remoteAddr); err != nil {
 				kklogger.WarnJ("DefaultUnsafe.Connect", fmt.Sprintf("channel_id: %s, error: %s", u.channel.ID(), err.Error()))
 				u.channel.inactiveChannel()
-				u.futureCancel(future)
+				future.(*DefaultFuture).channel = nil
+				u.futureFail(future, err)
 			} else {
 				u.channel.activeChannel()
 				u.futureSuccess(future)

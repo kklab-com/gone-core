@@ -205,25 +205,29 @@ func (c *DefaultChannel) activeChannel() {
 }
 
 func (c *DefaultChannel) inactiveChannel() (success bool, future concurrent.Future) {
-	if c.alive.Completable().Complete(c) {
-		cu := c
-		rf := c.alive.Then(func(parent concurrent.Future) interface{} {
-			// if server channel, wait all child channels be closed.
-			if sch, ok := cu.Pipeline().Channel().(ServerChannel); ok {
-				sch.waitChildren()
-			}
+	if c.alive != nil {
+		if c.alive.Completable().Complete(c) {
+			cu := c
+			rf := c.alive.Then(func(parent concurrent.Future) interface{} {
+				// if server channel, wait all child channels be closed.
+				if sch, ok := cu.Pipeline().Channel().(ServerChannel); ok {
+					sch.waitChildren()
+				}
 
-			cu.Pipeline().fireInactive()
-			cu.Pipeline().fireUnregistered()
-			if _, ok := cu.Pipeline().Channel().(ServerChannel); !ok {
-				cu.CloseFuture().Completable().Complete(cu)
-			}
+				cu.Pipeline().fireInactive()
+				cu.Pipeline().fireUnregistered()
+				if _, ok := cu.Pipeline().Channel().(ServerChannel); !ok {
+					cu.CloseFuture().Completable().Complete(cu)
+				}
 
-			cu.release()
-			return cu
-		})
+				cu.release()
+				return cu
+			})
 
-		return true, rf
+			return true, rf
+		}
+	} else {
+		c.alive = concurrent.NewFailedFuture(ErrNotActive)
 	}
 
 	return false, concurrent.NewCompletedFuture(c)
