@@ -1,7 +1,7 @@
 package channel
 
 import (
-	"github.com/kklab-com/goth-kkutil/buf"
+	buf "github.com/kklab-com/goth-bytebuf"
 )
 
 type MessageEncoder interface {

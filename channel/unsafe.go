@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	concurrent "github.com/kklab-com/goth-concurrent"
 	"github.com/kklab-com/goth-kklogger"
-	"github.com/kklab-com/goth-kkutil/concurrent"
 )
 
 const DefaultAcceptTimeout = 5000

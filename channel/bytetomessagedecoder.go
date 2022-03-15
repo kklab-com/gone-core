@@ -2,7 +2,7 @@ package channel
 
 import (
 	"github.com/kklab-com/gone-core/utils"
-	"github.com/kklab-com/goth-kkutil/buf"
+	buf "github.com/kklab-com/goth-bytebuf"
 	"github.com/kklab-com/goth-kkutil/structs"
 )
 

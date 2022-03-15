@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kklab-com/goth-base62"
-	"github.com/kklab-com/goth-kkutil/concurrent"
+	concurrent "github.com/kklab-com/goth-concurrent"
 	"github.com/pkg/errors"
 )
 

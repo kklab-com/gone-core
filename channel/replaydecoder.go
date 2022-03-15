@@ -4,8 +4,8 @@ import (
 	"sync"
 
 	"github.com/kklab-com/gone-core/utils"
+	buf "github.com/kklab-com/goth-bytebuf"
 	kklogger "github.com/kklab-com/goth-kklogger"
-	"github.com/kklab-com/goth-kkutil/buf"
 	"github.com/kklab-com/goth-kkutil/structs"
 	kkpanic "github.com/kklab-com/goth-panic"
 )

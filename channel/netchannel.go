@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"time"
 
+	buf "github.com/kklab-com/goth-bytebuf"
+	concurrent "github.com/kklab-com/goth-concurrent"
 	"github.com/kklab-com/goth-kklogger"
-	"github.com/kklab-com/goth-kkutil/buf"
-	"github.com/kklab-com/goth-kkutil/concurrent"
 	errors2 "github.com/pkg/errors"
 )
 

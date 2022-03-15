@@ -4,7 +4,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/kklab-com/goth-kkutil/concurrent"
+	concurrent "github.com/kklab-com/goth-concurrent"
 )
 
 type ServerChannel interface {
