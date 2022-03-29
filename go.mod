@@ -5,10 +5,10 @@ go 1.17
 require (
 	github.com/google/uuid v1.1.1
 	github.com/kklab-com/goth-base62 v1.0.0
-	github.com/kklab-com/goth-bytebuf v1.0.0
+	github.com/kklab-com/goth-bytebuf v1.0.1
 	github.com/kklab-com/goth-concurrent v1.0.1
 	github.com/kklab-com/goth-kklogger v1.0.1
-	github.com/kklab-com/goth-kkutil v1.3.0
+	github.com/kklab-com/goth-kkutil v1.3.1
 	github.com/kklab-com/goth-panic v1.0.3
 	github.com/pkg/errors v0.8.0
 )
