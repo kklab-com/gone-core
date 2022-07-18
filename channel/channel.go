@@ -228,6 +228,7 @@ func (c *DefaultChannel) inactiveChannel() (success bool, future concurrent.Futu
 		}
 	} else {
 		c.alive = concurrent.NewFailedFuture(ErrNotActive)
+		c.Pipeline().fireUnregistered()
 	}
 
 	return false, concurrent.NewCompletedFuture(c)
