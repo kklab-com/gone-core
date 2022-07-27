@@ -300,7 +300,7 @@ func (p *DefaultPipeline) fireErrorCaught(err error) Pipeline {
 }
 
 func (p *DefaultPipeline) Read() Pipeline {
-	p.tail.read()
+	p.head.handler().(*headHandler).read(p.head)
 	return p
 }
 

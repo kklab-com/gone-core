@@ -20,7 +20,6 @@ type Handler interface {
 	Disconnect(ctx HandlerContext, future Future)
 	Deregister(ctx HandlerContext, future Future)
 	ErrorCaught(ctx HandlerContext, err error)
-	read(ctx HandlerContext)
 }
 
 type DefaultHandler struct {
@@ -82,10 +81,6 @@ func (h *DefaultHandler) Deregister(ctx HandlerContext, future Future) {
 
 func (h *DefaultHandler) ErrorCaught(ctx HandlerContext, err error) {
 	ctx.FireErrorCaught(err)
-}
-
-func (h *DefaultHandler) read(ctx HandlerContext) {
-	ctx.read()
 }
 
 type readWriteHandler struct {

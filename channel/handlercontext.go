@@ -29,7 +29,6 @@ type HandlerContext interface {
 	setNext(prev HandlerContext) HandlerContext
 	deferErrorCaught()
 	handler() Handler
-	read() HandlerContext
 }
 
 type DefaultHandlerContext struct {
@@ -196,15 +195,6 @@ func (d *DefaultHandlerContext) Deregister(future Future) Future {
 
 func (d *DefaultHandlerContext) prev() HandlerContext {
 	return d.prevCtx
-}
-
-func (d *DefaultHandlerContext) read() HandlerContext {
-	if d.prev() != nil {
-		defer d.prev().deferErrorCaught()
-		d.prev().handler().read(d.prev())
-	}
-
-	return d
 }
 
 func (d *DefaultHandlerContext) deferErrorCaught() {
