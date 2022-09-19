@@ -26,7 +26,7 @@ type DefaultServerChannel struct {
 func (c *DefaultServerChannel) activeChannel() {
 	scp := c
 	scp.DefaultChannel.activeChannel()
-	scp.DefaultChannel.alive.Then(func(parent concurrent.Future) any {
+	scp.DefaultChannel.alive.Chainable().Then(func(parent concurrent.Future) any {
 		scp.childMap.Range(func(key, value any) bool {
 			if ch, ok := value.(Channel); ok {
 				if ch.IsActive() {

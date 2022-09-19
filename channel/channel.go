@@ -208,7 +208,7 @@ func (c *DefaultChannel) inactiveChannel() (success bool, future concurrent.Futu
 	if c.alive != nil {
 		if c.alive.Completable().Complete(c) {
 			cu := c
-			rf := c.alive.Then(func(parent concurrent.Future) any {
+			rf := c.alive.Chainable().Then(func(parent concurrent.Future) any {
 				// if server channel, wait all child channels be closed.
 				if sch, ok := cu.Pipeline().Channel().(ServerChannel); ok {
 					sch.waitChildren()
