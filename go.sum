@@ -7,8 +7,8 @@ github.com/kklab-com/goth-base62 v1.0.0 h1:tFIhY1a34asPh41GWfWafUd1DBrzHViOOM6RW
 github.com/kklab-com/goth-base62 v1.0.0/go.mod h1:zVOUVB/1H/vmOnZHOovnOXaJ9hpRTgSx0Sv63v0xaDI=
 github.com/kklab-com/goth-bytebuf v1.0.1 h1:ozcyL8fJ7EBlnMshepYTWOZbbf6icsrtiisEJACd9jo=
 github.com/kklab-com/goth-bytebuf v1.0.1/go.mod h1:H14vt2RptXUFR/+TVGF1TQFra5CAdOUZRI3NEPvv/G4=
-github.com/kklab-com/goth-concurrent v1.1.0 h1:P+qVcZ2BWT6ACHM5MwCe7XB55LgpvBjRciGPJAkbhes=
-github.com/kklab-com/goth-concurrent v1.1.0/go.mod h1:K1B7xp/7yiuH+2agCtfKz/eJDW4/8grb8LA7WwY1XLM=
+github.com/kklab-com/goth-concurrent v1.2.0 h1:lNCs1Vw+qn5vIFC4QCY08mcVTq+7nwzbc3jHptK1nSY=
+github.com/kklab-com/goth-concurrent v1.2.0/go.mod h1:b85JK3KHXZCj55Tq/L6sHJqmgduhWdwj1i/8pZUHxlA=
 github.com/kklab-com/goth-kklogger v1.0.1 h1:4QI3yr8PvaDsO3+6WB5FUcuNTQU6YN7R/AfMDv1Seno=
 github.com/kklab-com/goth-kklogger v1.0.1/go.mod h1:rY/H6dS74JsWiiJQXiFBIy9Tru6kL67e/iu+4PX8QOk=
 github.com/kklab-com/goth-kkutil v1.3.2 h1:s3DrO6ClFMiKWDEwg4QzF6VliYb/ggIVOf/eFJRf10M=
