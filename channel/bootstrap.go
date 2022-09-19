@@ -9,7 +9,7 @@ type Bootstrap interface {
 	Handler(handler Handler) Bootstrap
 	ChannelType(ch Channel) Bootstrap
 	Connect(localAddr net.Addr, remoteAddr net.Addr) Future
-	SetParams(key ParamKey, value interface{}) Bootstrap
+	SetParams(key ParamKey, value any) Bootstrap
 	Params() *Params
 }
 
@@ -27,7 +27,7 @@ type DefaultBootstrap struct {
 	params      Params
 }
 
-func (d *DefaultBootstrap) SetParams(key ParamKey, value interface{}) Bootstrap {
+func (d *DefaultBootstrap) SetParams(key ParamKey, value any) Bootstrap {
 	d.params.Store(key, value)
 	return d
 }
@@ -59,7 +59,7 @@ func (d *DefaultBootstrap) Connect(localAddr net.Addr, remoteAddr net.Addr) Futu
 	}
 
 	channel.init(channel)
-	d.Params().Range(func(k ParamKey, v interface{}) bool {
+	d.Params().Range(func(k ParamKey, v any) bool {
 		channel.SetParam(k, v)
 		return true
 	})
@@ -77,7 +77,7 @@ func (d *DefaultBootstrap) Connect(localAddr net.Addr, remoteAddr net.Addr) Futu
 	return channel.Connect(localAddr, remoteAddr)
 }
 
-func ValueSetFieldVal(target *reflect.Value, field string, val interface{}) bool {
+func ValueSetFieldVal(target *reflect.Value, field string, val any) bool {
 	if icc := target.Elem().FieldByName(field); icc.IsValid() && icc.CanSet() {
 		icc.Set(reflect.ValueOf(val))
 		return true

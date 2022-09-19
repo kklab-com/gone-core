@@ -14,10 +14,10 @@ type HandlerContext interface {
 	FireUnregistered() HandlerContext
 	FireActive() HandlerContext
 	FireInactive() HandlerContext
-	FireRead(obj interface{}) HandlerContext
+	FireRead(obj any) HandlerContext
 	FireReadCompleted() HandlerContext
 	FireErrorCaught(err error) HandlerContext
-	Write(obj interface{}, future Future) Future
+	Write(obj any, future Future) Future
 	Bind(localAddr net.Addr, future Future) Future
 	Close(future Future) Future
 	Connect(localAddr net.Addr, remoteAddr net.Addr, future Future) Future
@@ -106,7 +106,7 @@ func (d *DefaultHandlerContext) FireInactive() HandlerContext {
 	return d
 }
 
-func (d *DefaultHandlerContext) FireRead(obj interface{}) HandlerContext {
+func (d *DefaultHandlerContext) FireRead(obj any) HandlerContext {
 	if d.next() != nil {
 		defer d.next().deferErrorCaught()
 		d.next().handler().Read(d.next(), obj)
@@ -133,7 +133,7 @@ func (d *DefaultHandlerContext) FireErrorCaught(err error) HandlerContext {
 	return d
 }
 
-func (d *DefaultHandlerContext) Write(obj interface{}, future Future) Future {
+func (d *DefaultHandlerContext) Write(obj any, future Future) Future {
 	future = d.checkFuture(future)
 	if d.prev() != nil {
 		defer d.prev().deferErrorCaught()

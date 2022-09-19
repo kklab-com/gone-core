@@ -53,7 +53,7 @@ func (h *ReplayDecoder) Added(ctx HandlerContext) {
 	h.in = buf.EmptyByteBuf()
 }
 
-func (h *ReplayDecoder) Read(ctx HandlerContext, obj interface{}) {
+func (h *ReplayDecoder) Read(ctx HandlerContext, obj any) {
 	if h.Decode != nil {
 		h.in.Write(obj.(buf.ByteBuf).Bytes())
 		out := &utils.Queue{}

@@ -20,7 +20,7 @@ var ErrAcceptTimeout = fmt.Errorf("accept timeout")
 
 type Unsafe interface {
 	Read()
-	Write(obj interface{}, future Future)
+	Write(obj any, future Future)
 	Bind(localAddr net.Addr, future Future)
 	Close(future Future)
 	Connect(localAddr net.Addr, remoteAddr net.Addr, future Future)
@@ -73,7 +73,7 @@ func (u *DefaultUnsafe) Read() {
 	}
 }
 
-func (u *DefaultUnsafe) Write(obj interface{}, future Future) {
+func (u *DefaultUnsafe) Write(obj any, future Future) {
 	if future == nil {
 		future = u.channel.Pipeline().NewFuture()
 	}

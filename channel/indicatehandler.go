@@ -29,7 +29,7 @@ func (h *IndicateHandlerInbound) Inactive(ctx HandlerContext) {
 	ctx.FireInactive()
 }
 
-func (h *IndicateHandlerInbound) Read(ctx HandlerContext, obj interface{}) {
+func (h *IndicateHandlerInbound) Read(ctx HandlerContext, obj any) {
 	println(fmt.Sprintf("%s read", ctx.Channel().ID()))
 	(ctx).FireRead(obj)
 }
@@ -48,7 +48,7 @@ type IndicateHandlerOutbound struct {
 	DefaultHandler
 }
 
-func (h *IndicateHandlerOutbound) Write(ctx HandlerContext, obj interface{}, future Future) {
+func (h *IndicateHandlerOutbound) Write(ctx HandlerContext, obj any, future Future) {
 	println(fmt.Sprintf("%s write", ctx.Channel().ID()))
 	(ctx).Write(obj, future)
 }

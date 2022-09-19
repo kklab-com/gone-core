@@ -8,7 +8,6 @@ type Future interface {
 	concurrent.Future
 	Sync() Future
 	Channel() Channel
-	_channel() Channel
 }
 
 type DefaultFuture struct {
@@ -30,7 +29,7 @@ func (d *DefaultFuture) Sync() Future {
 	return d
 }
 
-func (d *DefaultFuture) Set(obj interface{}) {
+func (d *DefaultFuture) Set(obj any) {
 	d.Future.(concurrent.Settable).Set(obj)
 }
 
@@ -39,13 +38,9 @@ func (d *DefaultFuture) Channel() Channel {
 		return nil
 	} else {
 		if d.IsSuccess() {
-			return d._channel()
+			return d.channel
 		}
 	}
 
 	return nil
-}
-
-func (d *DefaultFuture) _channel() Channel {
-	return d.channel
 }

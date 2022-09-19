@@ -23,12 +23,12 @@ type Channel interface {
 	Disconnect() Future
 	Deregister() Future
 	Read() Channel
-	FireRead(obj interface{}) Channel
+	FireRead(obj any) Channel
 	FireReadCompleted() Channel
-	Write(obj interface{}) Future
+	Write(obj any) Future
 	IsActive() bool
-	SetParam(key ParamKey, value interface{})
-	Param(key ParamKey) interface{}
+	SetParam(key ParamKey, value any)
+	Param(key ParamKey) any
 	Params() *Params
 	Parent() ServerChannel
 	LocalAddr() net.Addr
@@ -46,7 +46,7 @@ type Channel interface {
 
 type UnsafeRead interface {
 	UnsafeIsAutoRead() bool
-	UnsafeRead() (interface{}, error)
+	UnsafeRead() (any, error)
 }
 
 type UnsafeBind interface {
@@ -62,7 +62,7 @@ type UnsafeClose interface {
 }
 
 type UnsafeWrite interface {
-	UnsafeWrite(obj interface{}) error
+	UnsafeWrite(obj any) error
 }
 
 type UnsafeConnect interface {
@@ -140,7 +140,7 @@ func (c *DefaultChannel) Read() Channel {
 	return c
 }
 
-func (c *DefaultChannel) FireRead(obj interface{}) Channel {
+func (c *DefaultChannel) FireRead(obj any) Channel {
 	c.Pipeline().fireRead(obj)
 	return c
 }
@@ -150,7 +150,7 @@ func (c *DefaultChannel) FireReadCompleted() Channel {
 	return c
 }
 
-func (c *DefaultChannel) Write(obj interface{}) Future {
+func (c *DefaultChannel) Write(obj any) Future {
 	return c.Pipeline().Write(obj)
 }
 
@@ -158,11 +158,11 @@ func (c *DefaultChannel) IsActive() bool {
 	return c.alive != nil && !c.alive.IsDone()
 }
 
-func (c *DefaultChannel) SetParam(key ParamKey, value interface{}) {
+func (c *DefaultChannel) SetParam(key ParamKey, value any) {
 	c.params.Store(key, value)
 }
 
-func (c *DefaultChannel) Param(key ParamKey) interface{} {
+func (c *DefaultChannel) Param(key ParamKey) any {
 	if v, f := c.params.Load(key); f {
 		return v
 	}
@@ -208,7 +208,7 @@ func (c *DefaultChannel) inactiveChannel() (success bool, future concurrent.Futu
 	if c.alive != nil {
 		if c.alive.Completable().Complete(c) {
 			cu := c
-			rf := c.alive.Then(func(parent concurrent.Future) interface{} {
+			rf := c.alive.Then(func(parent concurrent.Future) any {
 				// if server channel, wait all child channels be closed.
 				if sch, ok := cu.Pipeline().Channel().(ServerChannel); ok {
 					sch.waitChildren()
@@ -256,7 +256,7 @@ func (c *DefaultChannel) release() {
 	}
 }
 
-func (c *DefaultChannel) UnsafeWrite(obj interface{}) error {
+func (c *DefaultChannel) UnsafeWrite(obj any) error {
 	return nil
 }
 
@@ -264,7 +264,7 @@ func (c *DefaultChannel) UnsafeIsAutoRead() bool {
 	return true
 }
 
-func (c *DefaultChannel) UnsafeRead() (interface{}, error) {
+func (c *DefaultChannel) UnsafeRead() (any, error) {
 	return nil, nil
 }
 

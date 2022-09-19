@@ -21,7 +21,7 @@ func (h *ByteToMessageDecoder) Added(ctx HandlerContext) {
 	}
 }
 
-func (h *ByteToMessageDecoder) Read(ctx HandlerContext, obj interface{}) {
+func (h *ByteToMessageDecoder) Read(ctx HandlerContext, obj any) {
 	out := &utils.Queue{}
 	h.Decode(ctx, obj.(buf.ByteBuf), out)
 	for elem := out.Pop(); elem != nil; elem = out.Pop() {

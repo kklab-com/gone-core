@@ -5,12 +5,12 @@ import (
 )
 
 type MessageEncoder interface {
-	Encode(ctx HandlerContext, msg interface{}, out buf.ByteBuf)
+	Encode(ctx HandlerContext, msg any, out buf.ByteBuf)
 }
 
 type MessageToByteEncoder struct {
 	DefaultHandler
-	Encode func(ctx HandlerContext, msg interface{}, out buf.ByteBuf)
+	Encode func(ctx HandlerContext, msg any, out buf.ByteBuf)
 }
 
 func (h *MessageToByteEncoder) Added(ctx HandlerContext) {
@@ -19,12 +19,12 @@ func (h *MessageToByteEncoder) Added(ctx HandlerContext) {
 	}
 }
 
-func (h *MessageToByteEncoder) Write(ctx HandlerContext, obj interface{}, future Future) {
+func (h *MessageToByteEncoder) Write(ctx HandlerContext, obj any, future Future) {
 	out := buf.EmptyByteBuf()
 	h.Encode(ctx, obj, out)
 	ctx.Write(out, future)
 }
 
-func (h *MessageToByteEncoder) encode(ctx HandlerContext, msg interface{}, out buf.ByteBuf) {
+func (h *MessageToByteEncoder) encode(ctx HandlerContext, msg any, out buf.ByteBuf) {
 	panic("implement me")
 }

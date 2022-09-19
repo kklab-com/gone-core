@@ -8,7 +8,7 @@ import (
 type ServerBootstrap interface {
 	Bootstrap
 	ChildHandler(handler Handler) ServerBootstrap
-	SetChildParams(key ParamKey, value interface{}) ServerBootstrap
+	SetChildParams(key ParamKey, value any) ServerBootstrap
 	ChildParams() *Params
 	Bind(localAddr net.Addr) Future
 }
@@ -24,7 +24,7 @@ func (d *DefaultServerBootstrap) ChildHandler(handler Handler) ServerBootstrap {
 	return d
 }
 
-func (d *DefaultServerBootstrap) SetChildParams(key ParamKey, value interface{}) ServerBootstrap {
+func (d *DefaultServerBootstrap) SetChildParams(key ParamKey, value any) ServerBootstrap {
 	d.childParams.Store(key, value)
 	return d
 }
@@ -41,12 +41,12 @@ func (d *DefaultServerBootstrap) Bind(localAddr net.Addr) Future {
 	}
 
 	serverChannel.init(serverChannel)
-	d.Params().Range(func(k ParamKey, v interface{}) bool {
+	d.Params().Range(func(k ParamKey, v any) bool {
 		serverChannel.SetParam(k, v)
 		return true
 	})
 
-	d.ChildParams().Range(func(k ParamKey, v interface{}) bool {
+	d.ChildParams().Range(func(k ParamKey, v any) bool {
 		serverChannel.setChildParams(k, v)
 		return true
 	})

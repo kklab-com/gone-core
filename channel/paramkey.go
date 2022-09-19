@@ -77,21 +77,21 @@ type Params struct {
 	sync.Map
 }
 
-func (p *Params) Load(key ParamKey) (value interface{}, ok bool) {
+func (p *Params) Load(key ParamKey) (value any, ok bool) {
 	return p.Map.Load(key)
 }
 
-func (p *Params) Store(key ParamKey, value interface{}) {
+func (p *Params) Store(key ParamKey, value any) {
 	p.Map.Store(key, value)
 }
-func (p *Params) Range(f func(key ParamKey, value interface{}) bool) {
-	p.Map.Range(func(k, v interface{}) bool {
+func (p *Params) Range(f func(key ParamKey, value any) bool) {
+	p.Map.Range(func(k, v any) bool {
 		return f(k.(ParamKey), v)
 	})
 }
 func (p *Params) Delete(key ParamKey) {
 	p.Map.Delete(key)
 }
-func (p *Params) LoadOrStore(key ParamKey, value interface{}) (actual interface{}, loaded bool) {
+func (p *Params) LoadOrStore(key ParamKey, value any) (actual any, loaded bool) {
 	return p.Map.LoadOrStore(key, value)
 }

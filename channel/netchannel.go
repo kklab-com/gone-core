@@ -73,7 +73,7 @@ func (c *DefaultNetChannel) SetConn(conn net.Conn) {
 	c.setConn(conn)
 }
 
-func (c *DefaultNetChannel) UnsafeWrite(obj interface{}) error {
+func (c *DefaultNetChannel) UnsafeWrite(obj any) error {
 	if c.Conn() == nil {
 		return ErrNilObject
 	}
@@ -107,7 +107,7 @@ func (c *DefaultNetChannel) UnsafeWrite(obj interface{}) error {
 	return nil
 }
 
-func (c *DefaultNetChannel) UnsafeRead() (interface{}, error) {
+func (c *DefaultNetChannel) UnsafeRead() (any, error) {
 	if c.Conn() == nil {
 		return nil, ErrNilObject
 	}

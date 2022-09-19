@@ -16,18 +16,18 @@ type Pipeline interface {
 	RemoveByName(name string) Pipeline
 	Clear() Pipeline
 	Channel() Channel
-	Param(key ParamKey) interface{}
-	SetParam(key ParamKey, value interface{}) Pipeline
+	Param(key ParamKey) any
+	SetParam(key ParamKey, value any) Pipeline
 	Params() *Params
 	fireRegistered() Pipeline
 	fireUnregistered() Pipeline
 	fireActive() Pipeline
 	fireInactive() Pipeline
-	fireRead(obj interface{}) Pipeline
+	fireRead(obj any) Pipeline
 	fireReadCompleted() Pipeline
 	fireErrorCaught(err error) Pipeline
 	Read() Pipeline
-	Write(obj interface{}) Future
+	Write(obj any) Future
 	Bind(localAddr net.Addr) Future
 	Close() Future
 	Connect(localAddr net.Addr, remoteAddr net.Addr) Future
@@ -85,7 +85,7 @@ func (h *headHandler) read(ctx HandlerContext) {
 	ctx.Channel().unsafe().Read()
 }
 
-func (h *headHandler) Write(ctx HandlerContext, obj interface{}, future Future) {
+func (h *headHandler) Write(ctx HandlerContext, obj any, future Future) {
 	ctx.Channel().unsafe().Write(obj, future)
 }
 
@@ -128,7 +128,7 @@ type tailHandler struct {
 	DefaultHandler
 }
 
-func (h *tailHandler) Read(ctx HandlerContext, obj interface{}) {
+func (h *tailHandler) Read(ctx HandlerContext, obj any) {
 	ctx.FireErrorCaught(fmt.Errorf("message doesn't be catched"))
 }
 
@@ -247,7 +247,7 @@ func (p *DefaultPipeline) Clear() Pipeline {
 	return p
 }
 
-func (p *DefaultPipeline) Param(key ParamKey) interface{} {
+func (p *DefaultPipeline) Param(key ParamKey) any {
 	if v, f := p.carrier.Load(key); f {
 		return v
 	}
@@ -255,7 +255,7 @@ func (p *DefaultPipeline) Param(key ParamKey) interface{} {
 	return nil
 }
 
-func (p *DefaultPipeline) SetParam(key ParamKey, value interface{}) Pipeline {
+func (p *DefaultPipeline) SetParam(key ParamKey, value any) Pipeline {
 	p.carrier.Store(key, value)
 	return p
 }
@@ -284,7 +284,7 @@ func (p *DefaultPipeline) fireInactive() Pipeline {
 	return p
 }
 
-func (p *DefaultPipeline) fireRead(obj interface{}) Pipeline {
+func (p *DefaultPipeline) fireRead(obj any) Pipeline {
 	p.head.FireRead(obj)
 	return p
 }
@@ -304,7 +304,7 @@ func (p *DefaultPipeline) Read() Pipeline {
 	return p
 }
 
-func (p *DefaultPipeline) Write(obj interface{}) Future {
+func (p *DefaultPipeline) Write(obj any) Future {
 	return p.tail.Write(obj, p.NewFuture())
 }
 

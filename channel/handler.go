@@ -11,9 +11,9 @@ type Handler interface {
 	Unregistered(ctx HandlerContext)
 	Active(ctx HandlerContext)
 	Inactive(ctx HandlerContext)
-	Read(ctx HandlerContext, obj interface{})
+	Read(ctx HandlerContext, obj any)
 	ReadCompleted(ctx HandlerContext)
-	Write(ctx HandlerContext, obj interface{}, future Future)
+	Write(ctx HandlerContext, obj any, future Future)
 	Bind(ctx HandlerContext, localAddr net.Addr, future Future)
 	Close(ctx HandlerContext, future Future)
 	Connect(ctx HandlerContext, localAddr net.Addr, remoteAddr net.Addr, future Future)
@@ -47,7 +47,7 @@ func (h *DefaultHandler) Added(ctx HandlerContext) {
 func (h *DefaultHandler) Removed(ctx HandlerContext) {
 }
 
-func (h *DefaultHandler) Read(ctx HandlerContext, obj interface{}) {
+func (h *DefaultHandler) Read(ctx HandlerContext, obj any) {
 	ctx.FireRead(obj)
 }
 
@@ -55,7 +55,7 @@ func (h *DefaultHandler) ReadCompleted(ctx HandlerContext) {
 	ctx.FireReadCompleted()
 }
 
-func (h *DefaultHandler) Write(ctx HandlerContext, obj interface{}, future Future) {
+func (h *DefaultHandler) Write(ctx HandlerContext, obj any, future Future) {
 	ctx.Write(obj, future)
 }
 
@@ -85,15 +85,15 @@ func (h *DefaultHandler) ErrorCaught(ctx HandlerContext, err error) {
 
 type readWriteHandler struct {
 	DefaultHandler
-	r func(ctx HandlerContext, obj interface{})
-	w func(ctx HandlerContext, obj interface{}, future Future)
+	r func(ctx HandlerContext, obj any)
+	w func(ctx HandlerContext, obj any, future Future)
 }
 
-func NewRWHandler(r func(ctx HandlerContext, obj interface{}), w func(ctx HandlerContext, obj interface{}, future Future)) Handler {
+func NewRWHandler(r func(ctx HandlerContext, obj any), w func(ctx HandlerContext, obj any, future Future)) Handler {
 	return &readWriteHandler{r: r, w: w}
 }
 
-func (h *readWriteHandler) Read(ctx HandlerContext, obj interface{}) {
+func (h *readWriteHandler) Read(ctx HandlerContext, obj any) {
 	if h.r != nil {
 		h.r(ctx, obj)
 	} else {
@@ -101,7 +101,7 @@ func (h *readWriteHandler) Read(ctx HandlerContext, obj interface{}) {
 	}
 }
 
-func (h *readWriteHandler) Write(ctx HandlerContext, obj interface{}, future Future) {
+func (h *readWriteHandler) Write(ctx HandlerContext, obj any, future Future) {
 	if h.w != nil {
 		h.w(ctx, obj, future)
 	} else {
